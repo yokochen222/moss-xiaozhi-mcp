@@ -1,0 +1,7 @@
+python-dotenv>=1.0.0
+websockets>=11.0.3 
+mcp>=1.8.1
+pydantic>=2.11.4
+pyautogui>=0.9.54
+opencv-python>=4.10.0.24
+scapy>=2.5.0
