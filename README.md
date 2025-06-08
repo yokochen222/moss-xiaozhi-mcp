@@ -2,6 +2,9 @@
 
 原项目地址：https://github.com/78/mcp-calculator
 
+## 视频展示
+https://www.bilibili.com/video/BV1TpTNzbE3u/?vd_source=3cdb33659e80ec67cacea8b3ce284283
+
 ## 环境要求(建议使用conda创建环境)
 
 - Python 3.7+
