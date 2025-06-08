@@ -28,4 +28,6 @@ MCP_ENDPOINT = wss://api.xiaozhi.me/mcp/?token=需要改成你的小智后台的
 python mcp_pipe.py yo_mcp.py
 ```
 
+# 觉得有用的兄弟们 别忘了点个 star 支持下
+
 **注意！！！！由于控制PC设备等功能是基于MacOS实现 win的小伙伴需要自行修改**
