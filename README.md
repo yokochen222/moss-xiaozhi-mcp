@@ -20,6 +20,11 @@ https://www.bilibili.com/video/BV1TpTNzbE3u/?vd_source=3cdb33659e80ec67cacea8b3c
 
 ```bash
 MCP_ENDPOINT = wss://api.xiaozhi.me/mcp/?token=需要改成你的小智后台的MCP接入点
+CAMERA_USERNAME=监控访问账号
+CAMERA_PWD=监控访问密码
+CAMERA_URL=摄像头IP地址
+CAMERA_PORT=摄像头访问通道
+CAMERA_MAC=小智mac地址
 ```
 
 ## 启动
