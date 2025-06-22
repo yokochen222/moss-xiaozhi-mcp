@@ -1,4 +1,0 @@
-{
-  "content": "```html\n<!DOCTYPE html>\n<html>\n<head>\n    <style>\n        .square {\n            width: 100px;\n            height: 100px;\n            background-color: red;\n            border-radius: 20px;\n        }\n    </style>\n</head>\n<body>\n    <div class=\"square\"></div>\n</body>\n</html>\n```",
-  "timestamp": 1749380931.3131342
-}

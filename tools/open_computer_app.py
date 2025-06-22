@@ -15,6 +15,7 @@ def register_tool(mcp: FastMCP):
             如果需要打开哔哩哔哩搜索特定内容网址为：https://search.bilibili.com/all?keyword=这里填写需要搜索的内容名称
             如果需要打开淘宝搜索特定商品网址为：https://s.taobao.com/search?q=这里填写需要搜索的商品名称
             如果需要打开腾讯视频搜索特定电视剧或者电影名称网址为：https://v.qq.com/x/search/?q=这里填写电视或者电影的名称
+            如果需要搜索某个问题可以调用bing搜索工具，网址为：https://cn.bing.com/search?q=这里填写要搜索的问题
             注意：参数指令必须是上述四个中的一个，不能有空格，必须遵循大小写，否则会报错。如果要打开的不是声明中的应用，则尝试使用浏览器搜索打开，此时需要提供第二个参数 payload，payload 为网站的 URL
         """
         argument = argument.strip()
