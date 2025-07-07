@@ -71,7 +71,11 @@ async def connect_to_server(uri):
                 stdin=subprocess.PIPE,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
-                text=True  # Use text mode
+                text=True,  # Use text mode
+                bufsize=1,
+                encoding='utf-8',
+                errors='replace',
+                env={**os.environ, 'PYTHONIOENCODING': 'utf-8'}
             )
             logger.info(f"Started {mcp_script} process")
             
