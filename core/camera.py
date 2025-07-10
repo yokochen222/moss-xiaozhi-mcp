@@ -136,7 +136,7 @@ def capture(question: str):
         "Client-Id": "5c:aa:f4:cc:b8:dd",
     }
     try:
-        response = requests.post('https://api.xiaozhi.me/mcp/vision/explain', headers=headers, files=files,data=data)
+        response = requests.post('https://api.xiaozhi.me/vision/explain', headers=headers, files=files,data=data)
         response.raise_for_status()
         return response.json()
     except requests.exceptions.RequestException as e:
