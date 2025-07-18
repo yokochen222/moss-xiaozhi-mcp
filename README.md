@@ -13,6 +13,17 @@ https://www.bilibili.com/video/BV1TpTNzbE3u/?vd_source=3cdb33659e80ec67cacea8b3c
 - mcp>=1.8.1
 - pydantic>=2.11.4
 
+## conda虚拟环境创建
+
+```bash
+conda create -n xiaozhi-mcp python=3.10
+```
+
+## 依赖安装
+
+```bash
+pip install -r requirements.txt
+```
 
 ## 配置
 
