@@ -5,3 +5,4 @@ pydantic>=2.11.4
 pyautogui>=0.9.54
 opencv-python>=4.10.0.24
 scapy>=2.5.0
+onvif_zeep>=0.2.12
