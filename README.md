@@ -31,6 +31,17 @@ pip install -r requirements.txt
 
 ```bash
 MCP_ENDPOINT = wss://api.xiaozhi.me/mcp/?token=需要改成你的小智后台的MCP接入点
+
+# ONVIF 摄像头IP地址
+ONVIF_CAMERA_IP = 192.168.10.140
+# ONVIF 摄像头端口，天地伟业摄像头端口为80，根据自己的摄像头端口修改
+ONVIF_CAMERA_PORT = 8000
+# ONVIF 摄像头账号
+ONVIF_CAMERA_USERNAME = admin
+# ONVIF 摄像头密码
+ONVIF_CAMERA_PASSWORD = 123456
+# 是否启用ONVIF云台控制(带云台的摄像头可以开启，不开启将不会开启控制注册)
+ONVIF_CAMERA_PTZ_ENABLED = false
 ```
 
 ## 启动
