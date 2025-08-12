@@ -4,3 +4,4 @@ node_modules/
 .env
 captures/
 .DS_Store
+test.py

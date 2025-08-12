@@ -2,11 +2,27 @@
 import cv2
 import requests
 import time
+import os
+import datetime
+import threading
 
 from onvif import ONVIFCamera
 from getmac import get_mac_address
 
 class Camera:
+    captures_dir = 'captures'
+    _stream_thread = None
+    _stream_active = False
+    _latest_frame = None
+    _frame_lock = threading.Lock()
+    
+    def _ensure_captures_dir_exists(self):
+        """确保captures目录存在"""
+        if not os.path.exists(self.captures_dir):
+            os.makedirs(self.captures_dir)
+            return True
+        return False
+    
     def __init__(self, ip, port, user, password):
         self.mac_address = get_mac_address()
         self.videoCapture = None
@@ -36,41 +52,94 @@ class Camera:
 
     # 启动视频流
     def start_video_stream(self):
-        # 初始化视频流
-        self.videoCapture = cv2.VideoCapture(self.rtsp_url)
+        # 初始化视频流，设置低延迟模式
+        self.videoCapture = cv2.VideoCapture(self.rtsp_url, cv2.CAP_FFMPEG)
+        
+        # 设置RTSP选项以减少延迟
+        self.videoCapture.set(cv2.CAP_PROP_BUFFERSIZE, 1)
+        self.videoCapture.set(cv2.CAP_PROP_FPS, 30)
+        
         if not self.videoCapture.isOpened():
-            raise Exception(f"无法打开视频流：{self.rtsp_url}")
+            # 尝试使用不同的后端
+            self.videoCapture = cv2.VideoCapture(self.rtsp_url)
+            if not self.videoCapture.isOpened():
+                raise Exception(f"无法打开视频流：{self.rtsp_url}")
+
+        # 读取一帧来确保流已启动
+        ret, _ = self.videoCapture.read()
+        if not ret:
+            raise Exception("无法读取视频流的第一帧")
 
     # 关闭视频流
     def stop_video_stream(self):
+        self._stream_active = False
+        if self._stream_thread:
+            self._stream_thread.join()
         if self.videoCapture and self.videoCapture.isOpened():
             self.videoCapture.release()
             self.videoCapture = None
+        self._latest_frame = None
 
+    # 后台线程持续获取视频流
+    def _stream_worker(self):
+        while self._stream_active:
+            ret, frame = self.videoCapture.read()
+            if ret:
+                with self._frame_lock:
+                    self._latest_frame = frame
+            time.sleep(0.01)
+    
     # 读取视频流
     def get_video_stream(self, target_size_kb=50):
-        # 判断视频流是否已启动
-        if not self.videoCapture or not self.videoCapture.isOpened():
-            # 未启动则自动启动
-            self.start_video_stream()
-            initIsOpened = False
+        # 如果后台线程未运行，则启动
+        if not self._stream_active:
+            if not self.videoCapture or not self.videoCapture.isOpened():
+                self.start_video_stream()
+            self._stream_active = True
+            self._stream_thread = threading.Thread(target=self._stream_worker)
+            self._stream_thread.daemon = True
+            self._stream_thread.start()
+            
+            # 等待第一帧数据
+            max_wait = 5  # 最大等待秒数
+            start_time = time.time()
+            while time.time() - start_time < max_wait:
+                with self._frame_lock:
+                    if self._latest_frame is not None:
+                        break
+                time.sleep(0.1)
+            else:
+                raise Exception("视频流连接超时")
         
-        for _ in range(5):  # 稳定画面
-            ret, frame = self.videoCapture.read()
-            if not ret:
-                raise Exception("无法读取视频帧")
+        # 获取最新帧
+        with self._frame_lock:
+            if self._latest_frame is None:
+                raise Exception("无法获取视频帧")
+            frame = self._latest_frame
 
-        quality = 95
+        # 优化图像编码逻辑
+        quality = 90  # 稍微降低初始质量
+        max_quality_steps = 5  # 限制质量调整次数
+        step_count = 0
         bufferBytes = b''
+
         while True:
             success, buffer = cv2.imencode('.jpg', frame, [int(cv2.IMWRITE_JPEG_QUALITY), quality])
             if not success:
                 raise Exception("图像编码失败")
             bufferBytes = buffer.tobytes()
             current_size_kb = len(bufferBytes) / 1024
-            if current_size_kb <= target_size_kb or quality <= 10:
+
+            if current_size_kb <= target_size_kb or quality <= 10 or step_count >= max_quality_steps:
                 break
-            quality -= 5
+            
+            # 动态调整质量步长
+            if current_size_kb > target_size_kb * 1.5:
+                quality -= 10
+            else:
+                quality -= 5
+            step_count += 1
+        
         return bufferBytes
 
     #画面截取并识别
@@ -79,7 +148,21 @@ class Camera:
             img = self.get_video_stream()
         except Exception as e:
             return {"success": False, "error": f"视频流获取失败: {str(e)}"}
-        files = { 'file': ('camera.jpg', img, 'image/jpeg') }
+        
+        # 生成唯一的图片名称（使用时间戳）
+        timestamp = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
+        img_name = f'capture_{timestamp}.jpg'
+        
+        # 确保captures目录存在
+        self._ensure_captures_dir_exists()
+        
+        if os.environ.get('ONVIF_CAMERA_CAPTURE') == 'true':
+            # 保存图片到captures目录
+            img_path = os.path.join(self.captures_dir, img_name)
+            with open(img_path, 'wb') as f:
+                f.write(img)
+        
+        files = { 'file': (img_name, img, 'image/jpeg') }
         data = {
             'question': question,
         }
@@ -92,9 +175,35 @@ class Camera:
         try:
             response = requests.post('https://api.xiaozhi.me/vision/explain', headers=headers, files=files, data=data)
             response.raise_for_status()
-            return response.json()
+            result = response.json()
+            # 确保captures目录存在
+            self._ensure_captures_dir_exists()
+
+            if os.environ.get('ONVIF_CAMERA_LOG') == 'true':
+                log_path = os.path.join(self.captures_dir, 'log.txt')
+                with open(log_path, 'a', encoding='utf-8') as log_file:
+                    log_file.write(f"时间: {timestamp}\n")
+                    log_file.write(f"图片名称: {img_name}\n")
+                    log_file.write(f"响应结果: {result}\n")
+                    log_file.write("--------------------\n")
+            
+            return result
         except requests.exceptions.RequestException as e:
-            return {"success": False, "result": str(e)}
+            error_msg = str(e)
+            
+            # 记录错误日志到log.txt
+            # 确保captures目录存在
+            self._ensure_captures_dir_exists()
+            
+            # 日志文件路径设置为captures目录下
+            log_path = os.path.join(self.captures_dir, 'log.txt')
+            with open(log_path, 'a', encoding='utf-8') as log_file:
+                log_file.write(f"时间: {timestamp}\n")
+                log_file.write(f"图片名称: {img_name}\n")
+                log_file.write(f"错误信息: {error_msg}\n")
+                log_file.write("--------------------\n")
+            
+            return {"success": False, "result": error_msg}
 
 
     def control_ptz(self, direction: str, speed: float):
@@ -155,3 +264,37 @@ class Camera:
         except Exception as e:
             return {"success": False, "error": str(e)}
 
+    def show_live_feed(self, window_name='Live Camera Feed'):
+        """
+        显示实时摄像头画面
+        :param window_name: 窗口名称
+        """
+        try:
+            # 检查视频流是否已启动
+            if not self.videoCapture or not self.videoCapture.isOpened():
+                self.start_video_stream()
+            
+            print(f"正在显示实时画面。按 'q' 键退出...")
+            
+            # 创建显示窗口
+            cv2.namedWindow(window_name, cv2.WINDOW_NORMAL)
+            
+            while True:
+                # 读取视频帧
+                ret, frame = self.videoCapture.read()
+                if not ret:
+                    print("无法读取视频帧，退出实时画面")
+                    break
+                
+                # 显示帧
+                cv2.imshow(window_name, frame)
+                
+                # 按下 'q' 键退出
+                if cv2.waitKey(1) & 0xFF == ord('q'):
+                    break
+        
+        except Exception as e:
+            print(f"实时画面显示出错: {str(e)}")
+        finally:
+            # 关闭窗口
+            cv2.destroyWindow(window_name)
