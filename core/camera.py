@@ -150,8 +150,8 @@ class Camera:
             return {"success": False, "error": f"视频流获取失败: {str(e)}"}
         
         # 生成唯一的图片名称（使用时间戳）
-        timestamp = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
-        img_name = f'capture_{timestamp}.jpg'
+        timestamp = datetime.datetime.now().strftime('%Y%m%d_%H%m%S')
+        img_name = f'img_{timestamp}.jpg'
         
         # 确保captures目录存在
         self._ensure_captures_dir_exists()
@@ -181,24 +181,31 @@ class Camera:
 
             if os.environ.get('ONVIF_CAMERA_LOG') == 'true':
                 log_path = os.path.join(self.captures_dir, 'log.txt')
-                with open(log_path, 'a', encoding='utf-8') as log_file:
-                    log_file.write(f"时间: {timestamp}\n")
+                if not os.path.exists(log_path):
+                    with open(log_path, 'w', encoding='utf-8') as log_file:
+                        log_file.write("")
+                with open(log_path, 'r+', encoding='utf-8') as log_file:
+                    content = log_file.read()
+                    log_file.seek(0, 0)
+                    log_file.write(f"识别时间: {timestamp}\n")
                     log_file.write(f"图片名称: {img_name}\n")
-                    log_file.write(f"响应结果: {result}\n")
-                    log_file.write("--------------------\n")
+                    log_file.write(f"问题描述: {question}\n")
+                    log_file.write(f"识别结果: {result['text']}\n")
+                    log_file.write("------------------------------------------------------------\n")
+                    log_file.write(content)
             
             return result
         except requests.exceptions.RequestException as e:
             error_msg = str(e)
             
-            # 记录错误日志到log.txt
             # 确保captures目录存在
             self._ensure_captures_dir_exists()
             
             # 日志文件路径设置为captures目录下
             log_path = os.path.join(self.captures_dir, 'log.txt')
             with open(log_path, 'a', encoding='utf-8') as log_file:
-                log_file.write(f"时间: {timestamp}\n")
+                log_file.write(f"识别时间: {timestamp}\n")
+                log_file.write(f"问题描述: {question}\n")
                 log_file.write(f"图片名称: {img_name}\n")
                 log_file.write(f"错误信息: {error_msg}\n")
                 log_file.write("--------------------\n")
@@ -285,6 +292,9 @@ class Camera:
                 if not ret:
                     print("无法读取视频帧，退出实时画面")
                     break
+                
+                # 应用高斯模糊减少噪声
+                frame = cv2.GaussianBlur(frame, (5, 5), 0)
                 
                 # 显示帧
                 cv2.imshow(window_name, frame)
