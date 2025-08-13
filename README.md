@@ -46,6 +46,8 @@ ONVIF_CAMERA_PTZ_ENABLED = false
 ONVIF_CAMERA_LOG = false
 # 是否启用ONVIF截图保存到本地
 ONVIF_CAMERA_CAPTURE = false
+# 摄像头类型配置(true为天鹅款，false为宇航员款，天鹅款左右控制需要互换)
+CAMERA_TYPE = false
 ```
 
 ## 启动

@@ -242,6 +242,9 @@ class Camera:
             request = ptz.create_type('ContinuousMove')
             request.ProfileToken = self.token
 
+            # 获取摄像头类型配置
+            camera_type = os.environ.get('CAMERA_TYPE', 'false').lower() == 'true'
+            
             # 定义各方向参数
             directions = {
                 'up':           {'x': 0.0,     'y': speed},
@@ -257,7 +260,19 @@ class Camera:
             if direction not in directions:
                 raise ValueError(f"无效的方向: {direction}")
 
-            request.Velocity = {'PanTilt': directions[direction], 'Zoom': {'x': 0}}
+            # 如果是天鹅款摄像头（CAMERA_TYPE=true），需要互换左右控制
+            if camera_type:
+                # 获取原始方向参数
+                original_params = directions[direction]
+                # 互换x轴方向（左右互换）
+                adjusted_params = {
+                    'x': -original_params['x'],  # 取反实现左右互换
+                    'y': original_params['y']    # y轴保持不变
+                }
+                request.Velocity = {'PanTilt': adjusted_params, 'Zoom': {'x': 0}}
+            else:
+                # 宇航员款摄像头，使用原始控制参数
+                request.Velocity = {'PanTilt': directions[direction], 'Zoom': {'x': 0}}
 
             # 执行移动
             ptz.ContinuousMove(request)

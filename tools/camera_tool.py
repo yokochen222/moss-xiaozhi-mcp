@@ -29,6 +29,7 @@ def register_tool(mcp):
             return {"success": False, "result": str(e)}
 
     # 判断是否启用ONVIF云台控制(当前控制仅适用于天地伟业摄像头，其余品牌需要自行查看文档修改)
+    # 注意：可通过CAMERA_TYPE配置参数选择摄像头类型（true为天鹅款，false为宇航员款）
     if os.getenv('ONVIF_CAMERA_PTZ_ENABLED') == 'true':
         @mcp.tool()
         def adjust_the_camera_view_tool(direction: str, speed: float) -> dict:

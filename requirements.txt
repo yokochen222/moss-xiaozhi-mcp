@@ -7,3 +7,4 @@ opencv-python>=4.10.0.24
 scapy>=2.5.0
 onvif_zeep>=0.2.12
 getmac>=0.8.0
+python-socks
