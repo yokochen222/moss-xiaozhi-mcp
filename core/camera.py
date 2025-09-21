@@ -52,22 +52,30 @@ class Camera:
 
     # 启动视频流
     def start_video_stream(self):
-        # 初始化视频流，设置低延迟模式
-        self.videoCapture = cv2.VideoCapture(self.rtsp_url, cv2.CAP_FFMPEG)
+        # 初始化视频流，使用更稳定的设置
+        self.videoCapture = cv2.VideoCapture(self.rtsp_url)
         
-        # 设置RTSP选项以减少延迟
-        self.videoCapture.set(cv2.CAP_PROP_BUFFERSIZE, 1)
-        self.videoCapture.set(cv2.CAP_PROP_FPS, 30)
+        # 设置更合理的RTSP选项
+        self.videoCapture.set(cv2.CAP_PROP_BUFFERSIZE, 3)  # 增加缓冲区大小以减少花屏
+        self.videoCapture.set(cv2.CAP_PROP_FPS, 25)  # 降低FPS到标准值
+        
+        # 设置额外的OpenCV参数以提高稳定性
+        self.videoCapture.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc('H', '2', '6', '4'))
         
         if not self.videoCapture.isOpened():
-            # 尝试使用不同的后端
-            self.videoCapture = cv2.VideoCapture(self.rtsp_url)
+            # 尝试使用FFMPEG后端
+            self.videoCapture = cv2.VideoCapture(self.rtsp_url, cv2.CAP_FFMPEG)
             if not self.videoCapture.isOpened():
                 raise Exception(f"无法打开视频流：{self.rtsp_url}")
 
-        # 读取一帧来确保流已启动
-        ret, _ = self.videoCapture.read()
-        if not ret:
+        # 读取多帧来确保流已稳定启动
+        for i in range(5):
+            ret, frame = self.videoCapture.read()
+            if ret and frame is not None:
+                break
+            time.sleep(0.1)
+        
+        if not ret or frame is None:
             raise Exception("无法读取视频流的第一帧")
 
     # 关闭视频流
@@ -84,10 +92,12 @@ class Camera:
     def _stream_worker(self):
         while self._stream_active:
             ret, frame = self.videoCapture.read()
-            if ret:
-                with self._frame_lock:
-                    self._latest_frame = frame
-            time.sleep(0.01)
+            if ret and frame is not None:
+                # 验证帧的有效性
+                if frame.size > 0 and len(frame.shape) == 3:
+                    with self._frame_lock:
+                        self._latest_frame = frame.copy()  # 使用copy避免引用问题
+            time.sleep(0.04)  # 调整为25fps的间隔
     
     # 读取视频流
     def get_video_stream(self, target_size_kb=50):
@@ -115,29 +125,45 @@ class Camera:
         with self._frame_lock:
             if self._latest_frame is None:
                 raise Exception("无法获取视频帧")
-            frame = self._latest_frame
+            # 确保帧数据有效
+            if self._latest_frame.size == 0:
+                raise Exception("视频帧数据为空")
+            frame = self._latest_frame.copy()  # 使用copy确保数据安全
 
         # 优化图像编码逻辑
-        quality = 90  # 稍微降低初始质量
-        max_quality_steps = 5  # 限制质量调整次数
+        # 首先检查帧是否有效
+        if frame is None or frame.size == 0:
+            raise Exception("无效的视频帧")
+        
+        # 确保帧是3通道BGR格式
+        if len(frame.shape) != 3 or frame.shape[2] != 3:
+            raise Exception(f"不支持的帧格式: {frame.shape}")
+        
+        quality = 85  # 使用更合理的初始质量
+        max_quality_steps = 3  # 减少质量调整次数
         step_count = 0
         bufferBytes = b''
 
         while True:
-            success, buffer = cv2.imencode('.jpg', frame, [int(cv2.IMWRITE_JPEG_QUALITY), quality])
+            # 使用更稳定的编码参数
+            encode_params = [
+                int(cv2.IMWRITE_JPEG_QUALITY), quality,
+                int(cv2.IMWRITE_JPEG_OPTIMIZE), 1,
+                int(cv2.IMWRITE_JPEG_PROGRESSIVE), 0
+            ]
+            
+            success, buffer = cv2.imencode('.jpg', frame, encode_params)
             if not success:
                 raise Exception("图像编码失败")
+            
             bufferBytes = buffer.tobytes()
             current_size_kb = len(bufferBytes) / 1024
 
-            if current_size_kb <= target_size_kb or quality <= 10 or step_count >= max_quality_steps:
+            if current_size_kb <= target_size_kb or quality <= 20 or step_count >= max_quality_steps:
                 break
             
-            # 动态调整质量步长
-            if current_size_kb > target_size_kb * 1.5:
-                quality -= 10
-            else:
-                quality -= 5
+            # 更保守的质量调整
+            quality -= 15
             step_count += 1
         
         return bufferBytes
@@ -213,22 +239,22 @@ class Camera:
             return {"success": False, "result": error_msg}
 
 
-    def control_ptz(self, direction: str, speed: float):
+    def control_ptz(self, direction: str, angle: float):
         """
-        控制摄像头云台
-        :param direction: 方向 ('up', 'down', 'left', 'right',
-                                'top-left', 'top-right', 'bottom-left', 'bottom-right')
-        :param speed: 速度 (0.1-1.0)
-        :param ip: 摄像头IP
-        :param port: 摄像头端口
-        :param user: 用户名
-        :param password: 密码
+        MOSS视角角度调整工具，最大值 -360度到360度，当用户需要调整角度时使用此工具
+        参数如下
+        :param direction: 方向 ('up', 'down', 'left', 'right')
+        :param angle: 角度现在最大值 -360度到360度
         :return: 操作结果
         """
         try:
             # 验证速度范围
-            if not 0.1 <= speed <= 1.0:
-                raise ValueError("速度必须在0.1到1.0之间")
+            if angle < -360 or angle > 360:
+                raise ValueError("角度必须在-360度到360度之间")
+
+            # ⚙️ 参数配置
+            FULL_ROTATION_TIME = 12.0  # 摄像头水平转 360° 所需时间（单位：秒），请根据实际调整
+            speed = abs(angle) / 360.0 * FULL_ROTATION_TIME
 
             # 连接ONVIF摄像头
             cam = self.camera
@@ -244,15 +270,12 @@ class Camera:
 
             # 定义各方向参数
             directions = {
-                'up':           {'x': 0.0,     'y': speed},
-                'down':         {'x': 0.0,     'y': -speed},
-                'left':         {'x': -speed,  'y': 0.0},
-                'right':        {'x': speed,   'y': 0.0},
-                'top-left':     {'x': -speed,  'y': speed},
-                'top-right':    {'x': speed,   'y': speed},
-                'bottom-left':  {'x': -speed,  'y': -speed},
-                'bottom-right': {'x': speed,   'y': -speed}
+                'down':           {'x': 0.0,     'y': speed},
+                'up':           {'x': 0.0,     'y': -speed},
+                'right':         {'x': -speed,  'y': 0.0},
+                'left':        {'x': speed,   'y': 0.0},
             }
+            
 
             if direction not in directions:
                 raise ValueError(f"无效的方向: {direction}")
@@ -289,12 +312,17 @@ class Camera:
             while True:
                 # 读取视频帧
                 ret, frame = self.videoCapture.read()
-                if not ret:
+                if not ret or frame is None:
                     print("无法读取视频帧，退出实时画面")
                     break
                 
-                # 应用高斯模糊减少噪声
-                frame = cv2.GaussianBlur(frame, (5, 5), 0)
+                # 验证帧的有效性
+                if frame.size == 0 or len(frame.shape) != 3:
+                    print("收到无效帧，跳过")
+                    continue
+                
+                # 应用轻微的降噪处理（减少模糊强度）
+                frame = cv2.GaussianBlur(frame, (3, 3), 0)
                 
                 # 显示帧
                 cv2.imshow(window_name, frame)
