@@ -55,8 +55,8 @@ class Camera:
         # 初始化视频流，使用更稳定的设置
         self.videoCapture = cv2.VideoCapture(self.rtsp_url)
         
-        # 设置更合理的RTSP选项
-        self.videoCapture.set(cv2.CAP_PROP_BUFFERSIZE, 3)  # 增加缓冲区大小以减少花屏
+        # 设置更合理的RTSP选项，减少延迟
+        self.videoCapture.set(cv2.CAP_PROP_BUFFERSIZE, 2)  # 适中的缓冲区大小以平衡稳定性和延迟
         self.videoCapture.set(cv2.CAP_PROP_FPS, 25)  # 降低FPS到标准值
         
         # 设置额外的OpenCV参数以提高稳定性
@@ -97,7 +97,7 @@ class Camera:
                 if frame.size > 0 and len(frame.shape) == 3:
                     with self._frame_lock:
                         self._latest_frame = frame.copy()  # 使用copy避免引用问题
-            time.sleep(0.04)  # 调整为25fps的间隔
+            time.sleep(0.04)  # 恢复到合理的更新频率
     
     # 读取视频流
     def get_video_stream(self, target_size_kb=50):
@@ -121,14 +121,19 @@ class Camera:
             else:
                 raise Exception("视频流连接超时")
         
-        # 获取最新帧
-        with self._frame_lock:
-            if self._latest_frame is None:
-                raise Exception("无法获取视频帧")
-            # 确保帧数据有效
-            if self._latest_frame.size == 0:
-                raise Exception("视频帧数据为空")
-            frame = self._latest_frame.copy()  # 使用copy确保数据安全
+        # 获取最新帧，增加重试机制
+        max_retries = 3
+        for attempt in range(max_retries):
+            with self._frame_lock:
+                if self._latest_frame is not None and self._latest_frame.size > 0:
+                    frame = self._latest_frame.copy()  # 使用copy确保数据安全
+                    break
+                elif attempt < max_retries - 1:
+                    # 等待更多帧数据
+                    time.sleep(0.2)
+                    continue
+                else:
+                    raise Exception("无法获取有效的视频帧")
 
         # 优化图像编码逻辑
         # 首先检查帧是否有效
@@ -168,12 +173,60 @@ class Camera:
         
         return bufferBytes
 
+    def _clear_buffer(self):
+        """清空视频流缓冲区，确保获取最新帧"""
+        if self.videoCapture and self.videoCapture.isOpened():
+            # 温和地清空缓冲区，避免影响视频流稳定性
+            for _ in range(1):  # 只清空1帧，确保获取最新帧
+                ret, _ = self.videoCapture.read()
+                if not ret:
+                    break
+            time.sleep(0.1)  # 短暂等待，确保缓冲区稳定
+
     #画面截取并识别
     def capture_and_recognize(self, question: str) -> dict:
         try:
+            # 确保视频流正在运行，如果连接断开则重新连接
+            if not self._stream_active or not self.videoCapture or not self.videoCapture.isOpened():
+                print("视频流未运行，正在重新初始化...")
+                self.start_video_stream()
+                self._stream_active = True
+                self._stream_thread = threading.Thread(target=self._stream_worker)
+                self._stream_thread.daemon = True
+                self._stream_thread.start()
+                time.sleep(1.5)  # 增加等待时间，确保流稳定
+            
+            # 检查后台线程是否还在运行
+            if self._stream_thread and not self._stream_thread.is_alive():
+                print("后台线程已停止，正在重新启动...")
+                self._stream_active = True
+                self._stream_thread = threading.Thread(target=self._stream_worker)
+                self._stream_thread.daemon = True
+                self._stream_thread.start()
+                time.sleep(1)  # 等待线程启动
+            
+            # 清空缓冲区，确保获取最新帧
+            self._clear_buffer()
+            
+            # 获取最新帧
             img = self.get_video_stream()
         except Exception as e:
-            return {"success": False, "error": f"视频流获取失败: {str(e)}"}
+            # 如果获取失败，尝试重新初始化整个视频流
+            print(f"获取视频流失败，尝试重新初始化: {e}")
+            try:
+                self.stop_video_stream()
+                time.sleep(1)
+                self.start_video_stream()
+                self._stream_active = True
+                self._stream_thread = threading.Thread(target=self._stream_worker)
+                self._stream_thread.daemon = True
+                self._stream_thread.start()
+                time.sleep(1.5)
+                
+                # 再次尝试获取帧
+                img = self.get_video_stream()
+            except Exception as retry_error:
+                return {"success": False, "error": f"视频流重新初始化失败: {str(retry_error)}"}
         
         # 生成唯一的图片名称（使用时间戳）
         timestamp = datetime.datetime.now().strftime('%Y%m%d_%H%m%S')
@@ -270,10 +323,10 @@ class Camera:
 
             # 定义各方向参数
             directions = {
-                'down':           {'x': 0.0,     'y': speed},
-                'up':           {'x': 0.0,     'y': -speed},
-                'right':         {'x': -speed,  'y': 0.0},
-                'left':        {'x': speed,   'y': 0.0},
+                'up':           {'x': 0.0,     'y': speed},
+                'down':           {'x': 0.0,     'y': -speed},
+                'left':         {'x': -speed,  'y': 0.0},
+                'right':        {'x': speed,   'y': 0.0},
             }
             
 
@@ -288,6 +341,21 @@ class Camera:
             time.sleep(1)
             # 停止移动
             ptz.Stop({'ProfileToken': self.token})
+            
+            # PTZ操作后，重新初始化视频流以确保连接稳定
+            try:
+                if self.videoCapture and self.videoCapture.isOpened():
+                    self.stop_video_stream()
+                time.sleep(0.5)  # 短暂等待，让摄像头稳定
+                self.start_video_stream()
+                # 重新启动后台线程
+                self._stream_active = True
+                self._stream_thread = threading.Thread(target=self._stream_worker)
+                self._stream_thread.daemon = True
+                self._stream_thread.start()
+                time.sleep(0.5)  # 等待线程启动
+            except Exception as stream_error:
+                print(f"PTZ操作后重新初始化视频流时出现警告: {stream_error}")
 
             return {"success": True, "message": f"云台已向{direction}方向移动"}
 
