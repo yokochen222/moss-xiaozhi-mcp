@@ -1,6 +1,11 @@
 from mcp.server.fastmcp import FastMCP
 import os
 import importlib
+from dotenv import load_dotenv
+
+load_dotenv()
+
+ENABLED_IP_CAMERA = os.getenv('ENABLED_IP_CAMERA')
 
 # Create an MCP server
 mcp = FastMCP("YOKO_MCP_SERVER")
@@ -13,6 +18,8 @@ for filename in os.listdir(tools_dir):
         try:
             module = importlib.import_module(module_name)
             if hasattr(module, 'register_tool'):
+                if ENABLED_IP_CAMERA != 'true' and module_name == 'tools.camera_tool':
+                    continue
                 module.register_tool(mcp)
         except ImportError as e:
             print(f"Failed to import {module_name}: {e}")

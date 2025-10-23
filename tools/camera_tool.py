@@ -4,12 +4,17 @@ import os
 
 load_dotenv()
 
-camera = Camera(
-    os.environ.get('ONVIF_CAMERA_IP'),
-    os.environ.get('ONVIF_CAMERA_PORT'),
-    os.environ.get('ONVIF_CAMERA_USERNAME'),
-    os.environ.get('ONVIF_CAMERA_PASSWORD')
-)
+ENABLED_IP_CAMERA = os.getenv('ENABLED_IP_CAMERA')
+
+
+if ENABLED_IP_CAMERA == 'true':
+    global camera
+    camera = Camera(
+        os.environ.get('ONVIF_CAMERA_IP'),
+        os.environ.get('ONVIF_CAMERA_PORT'),
+        os.environ.get('ONVIF_CAMERA_USERNAME'),
+        os.environ.get('ONVIF_CAMERA_PASSWORD')
+    )
 
 def register_tool(mcp):
     @mcp.tool()

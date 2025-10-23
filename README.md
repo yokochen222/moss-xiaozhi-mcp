@@ -3,6 +3,7 @@
 原项目地址：https://github.com/78/mcp-calculator
 
 ## 视频展示
+
 https://www.bilibili.com/video/BV1TpTNzbE3u/?vd_source=3cdb33659e80ec67cacea8b3ce284283
 
 ## 环境要求(建议使用conda创建环境)
@@ -31,7 +32,12 @@ pip install -r requirements.txt
 
 ```bash
 # 小智 MCP MCP接入点地址
-MCP_ENDPOINT = wss://api.xiaozhi.me/mcp/?token=需要改成你的小智后台的MCP接入点
+MCP_ENDPOINT = wss://api.xiaozhi.me/mcp/?token=xxx
+
+
+# 视觉识别相关配置
+# 是否启用网络摄像头MCP 如果没有摄像头此配置 值为 false 反之为 true
+ENABLED_IP_CAMERA = false
 # ONVIF 摄像头IP地址
 ONVIF_CAMERA_IP = 192.168.10.143
 # ONVIF 摄像头端口，天地伟业摄像头端口为80，根据自己的摄像头端口修改
@@ -46,6 +52,13 @@ ONVIF_CAMERA_PTZ_ENABLED = false
 ONVIF_CAMERA_LOG = false
 # 是否启用ONVIF截图保存到本地
 ONVIF_CAMERA_CAPTURE = false
+
+
+# Homeasstant 相关配置
+# Homeasstant 服务地址
+HA_ADDRESS = http://192.168.1.197:8123
+# Homeasstant 访问密钥
+HA_AUTH_TOKEN = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.xxxxxx
 ```
 
 ## 启动
