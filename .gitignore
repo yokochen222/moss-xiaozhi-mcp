@@ -5,3 +5,4 @@ node_modules/
 captures/
 .DS_Store
 test.py
+venv/

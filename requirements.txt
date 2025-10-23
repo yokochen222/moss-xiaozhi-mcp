@@ -1,9 +1,21 @@
+# MCP Calculator 项目依赖包
+# 核心依赖
 python-dotenv>=1.0.0
 websockets>=11.0.3 
 mcp>=1.8.1
 pydantic>=2.11.4
-pyautogui>=0.9.54
+
+# 摄像头和视觉识别相关
 opencv-python>=4.10.0.24
-scapy>=2.5.0
 onvif_zeep>=0.2.12
+
+# 系统控制和自动化
+pyautogui>=0.9.54
+scapy>=2.5.0
 getmac>=0.8.0
+
+# HTTP 请求 (Home Assistant 集成)
+requests>=2.31.0
+
+# 图像处理 (OpenCV 依赖)
+numpy>=1.24.0

@@ -6,7 +6,7 @@
 
 https://www.bilibili.com/video/BV1TpTNzbE3u/?vd_source=3cdb33659e80ec67cacea8b3ce284283
 
-## 环境要求(建议使用conda创建环境)
+## 环境要求
 
 - Python 3.7+
 - websockets>=11.0.3
@@ -14,17 +14,55 @@ https://www.bilibili.com/video/BV1TpTNzbE3u/?vd_source=3cdb33659e80ec67cacea8b3c
 - mcp>=1.8.1
 - pydantic>=2.11.4
 
-## conda虚拟环境创建
+## 环境设置
+
+### 方式一：venv 环境（推荐）
+
+#### macOS/Linux 用户
 
 ```bash
-conda create -n xiaozhi-mcp python=3.10
+# 自动设置环境
+./setup_venv.sh
+
+# 激活环境
+./activate_venv.sh
+# 或者手动激活: source venv/bin/activate
+
+# 运行项目
+python mcp_pipe.py yo_mcp.py
 ```
 
-## 依赖安装
+#### Windows 用户
+
+```cmd
+# 自动设置环境
+setup_venv.bat
+
+# 激活环境
+activate_venv.bat
+# 或者手动激活: venv\Scripts\activate.bat
+
+# 运行项目
+python mcp_pipe.py yo_mcp.py
+```
+
+### 方式二：conda 环境（传统方式）
 
 ```bash
+# 创建conda环境
+conda create -n xiaozhi-mcp python=3.10
+
+# 激活环境
+conda activate xiaozhi-mcp
+
+# 安装依赖
 pip install -r requirements.txt
 ```
+
+> **💡 推荐使用 venv 环境**：更轻量、更标准、启动更快。
+> 
+> - 详细说明请查看 [VENV_SETUP.md](VENV_SETUP.md)
+> - Windows 用户专用指南：[WINDOWS_GUIDE.md](WINDOWS_GUIDE.md)
 
 ## 配置
 
