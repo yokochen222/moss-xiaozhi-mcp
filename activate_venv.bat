@@ -1,4 +1,8 @@
 @echo off
+REM 设置终端为UTF-8编码，以确保中文正常显示
+chcp 65001 > nul
+
+@echo off
 REM MCP Calculator 项目 venv 环境激活脚本 (Windows)
 
 echo 🔧 激活 MCP Calculator venv 环境...

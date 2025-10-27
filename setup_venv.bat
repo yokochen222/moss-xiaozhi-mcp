@@ -1,4 +1,8 @@
 @echo off
+REM 设置终端为UTF-8编码，以确保中文正常显示
+chcp 65001 > nul
+
+@echo off
 REM MOSS MCP 项目 venv 环境设置脚本 (Windows)
 REM 用于从 conda 环境切换到 venv 环境管理
 

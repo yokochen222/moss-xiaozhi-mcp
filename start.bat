@@ -1,4 +1,8 @@
 @echo off
+REM 设置终端为UTF-8编码，以确保中文正常显示
+chcp 65001 > nul
+
+@echo off
 REM MOSS MCP 快速启动脚本 (Windows)
 
 echo 🚀 启动 MOSS MCP...
