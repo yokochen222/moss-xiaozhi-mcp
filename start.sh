@@ -1,8 +1,8 @@
 #!/bin/bash
 
-# MCP Calculator 快速启动脚本
+# MOSS MCP 快速启动脚本
 
-echo "🚀 启动 MCP Calculator..."
+echo "🚀 启动 MOSS MCP..."
 
 # 检查虚拟环境是否存在
 if [ ! -d "venv" ]; then
@@ -22,5 +22,5 @@ if [ ! -f ".env" ]; then
 fi
 
 # 启动项目
-echo "🎯 启动 MCP Calculator..."
+echo "🎯 启动 MOSS MCP..."
 python mcp_pipe.py yo_mcp.py

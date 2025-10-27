@@ -36,7 +36,7 @@ python -m pip install --upgrade pip
 
 REM 安装依赖
 echo 📚 安装项目依赖...
-pip install -r requirements.txt
+pip install -r requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple/
 if %errorlevel% neq 0 (
     echo ❌ 依赖安装失败，请检查网络连接
     pause

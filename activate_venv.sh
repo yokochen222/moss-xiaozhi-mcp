@@ -1,8 +1,8 @@
 #!/bin/bash
 
-# MCP Calculator 项目 venv 环境激活脚本
+# MOSS MCP 项目 venv 环境激活脚本
 
-echo "🔧 激活 MCP Calculator venv 环境..."
+echo "🔧 激活 MOSS MCP venv 环境..."
 
 # 检查虚拟环境是否存在
 if [ ! -d "venv" ]; then

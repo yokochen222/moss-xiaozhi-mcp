@@ -1,4 +1,4 @@
-# MCP Calculator Windows 用户指南
+# MOSS MCP Windows 用户指南
 
 ## 🪟 Windows 用户专用说明
 
@@ -228,6 +228,6 @@ start.bat
 
 ---
 
-**🎉 Windows 用户现在可以轻松使用 MCP Calculator 项目了！**
+**🎉 Windows 用户现在可以轻松使用 MOSS MCP 项目了！**
 
 **所有功能保持不变，但使用更加简单便捷！**

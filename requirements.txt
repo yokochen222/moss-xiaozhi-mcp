@@ -1,4 +1,4 @@
-# MCP Calculator 项目依赖包
+# MOSS MCP 项目依赖包
 # 核心依赖
 python-dotenv>=1.0.0
 websockets>=11.0.3 
