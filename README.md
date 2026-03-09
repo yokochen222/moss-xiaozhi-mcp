@@ -1,3 +1,6 @@
+# 可以安装第三方MCP版本
+基于nodejs 仓库地址：https://github.com/yokochen222/moss-xiaozhi-node-mcp
+
 ## 本工程基于虾哥 MCP实现
 
 原项目地址：https://github.com/78/mcp-calculator
