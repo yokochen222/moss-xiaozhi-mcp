@@ -6,7 +6,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 ENABLED_IP_CAMERA = os.getenv('ENABLED_IP_CAMERA')
-
+ENABLED_HERMES = os.getenv('ENABLED_HERMES')
 # Create an MCP server
 mcp = FastMCP("YOKO_MCP_SERVER")
 
@@ -21,6 +21,8 @@ for filename in os.listdir(tools_dir):
                 if ENABLED_IP_CAMERA != 'true' and module_name == 'tools.camera_tool':
                     continue
                 module.register_tool(mcp)
+                if ENABLED_HERMES != 'true' and module_name == 'tools.hermes_tool':
+                    continue
         except ImportError as e:
             print(f"Failed to import {module_name}: {e}")
 
